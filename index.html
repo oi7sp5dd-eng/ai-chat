@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>AI Chat</title>
+</head>
+
+<body>
+
+<h1>AI Chat</h1>
+
+<input id="message" placeholder="Напиши сообщение">
+<button onclick="send()">Отправить</button>
+
+<div id="chat"></div>
+
+<script>
+
+function send(){
+const message = document.getElementById("message").value;
+
+const chat = document.getElementById("chat");
+
+chat.innerHTML += "<p>Ты: " + message + "</p>";
+
+}
+
+</script>
+
+</body>
+</html>
