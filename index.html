@@ -1,62 +1,234 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>AI Chat</title>
+  <title>Neuraxis</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial;
+      background: radial-gradient(circle at top, #1e1b4b, #020617);
+      color: white;
+      display: flex;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 260px;
+      background: #020617;
+      height: 100vh;
+      padding: 15px;
+      border-right: 1px solid #1e293b;
+    }
+
+    .logo {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      color: #60a5fa;
+    }
+
+    .chat-item {
+      padding: 10px;
+      background: #1e293b;
+      margin-bottom: 6px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .chat-item:hover {
+      background: #334155;
+    }
+
+    /* MAIN */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      padding: 15px 30px;
+      font-size: 18px;
+      border-bottom: 1px solid #1e293b;
+      color: #93c5fd;
+    }
+
+    .chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 120px;
+    }
+
+    .msg {
+      max-width: 800px;
+      margin-bottom: 15px;
+      padding: 14px;
+      border-radius: 12px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .user {
+      background: #2563eb;
+      margin-left: auto;
+    }
+
+    .ai {
+      background: #1e293b;
+    }
+
+    /* INPUT */
+    .input-area {
+      padding: 15px 20px;
+      display: flex;
+      border-top: 1px solid #1e293b;
+      background: #020617;
+    }
+
+    input {
+      flex: 1;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      outline: none;
+      background: #1e293b;
+      color: white;
+      font-size: 15px;
+    }
+
+    button {
+      margin-left: 10px;
+      padding: 0 18px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(45deg, #2563eb, #7c3aed);
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    /* CODE BLOCK */
+    pre {
+      background: #000;
+      padding: 12px;
+      border-radius: 10px;
+      position: relative;
+      overflow-x: auto;
+      margin-top: 10px;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: #1e293b;
+      border: none;
+      color: white;
+      padding: 5px 8px;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    /* typing */
+    .typing::after {
+      content: " ●";
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0% {opacity:0}
+      50% {opacity:1}
+      100% {opacity:0}
+    }
+  </style>
 </head>
 
 <body>
 
-<h1>AI Chat</h1>
+<div class="sidebar">
+  <div class="logo">Neuraxis</div>
+  <div id="chats"></div>
+</div>
 
-<input id="message" placeholder="Напиши сообщение">
-<button onclick="sendMessage()">Отправить</button>
+<div class="main">
 
-<div id="chat"></div>
+  <div class="header">AI Chat</div>
+
+  <div id="chat" class="chat"></div>
+
+  <div class="input-area">
+    <input id="message" placeholder="Напиши сообщение..." onkeydown="if(event.key==='Enter') sendMessage()">
+    <button onclick="sendMessage()">➤</button>
+  </div>
+
+</div>
 
 <script>
-async function sendMessage() {
+let chats = [];
+let currentChat = [];
+
+function addChat(title){
+  chats.push({title});
+  renderChats();
+}
+
+function renderChats(){
+  const el = document.getElementById("chats");
+  el.innerHTML = "";
+  chats.forEach(c=>{
+    el.innerHTML += `<div class="chat-item">${c.title}</div>`;
+  });
+}
+
+function formatText(text){
+  return text.replace(/```(.*?)```/gs, (match, code)=>{
+    return `<pre><button class="copy-btn" onclick="navigator.clipboard.writeText(\`${code}\`)">📋</button>${code}</pre>`;
+  });
+}
+
+async function sendMessage(){
   const input = document.getElementById("message");
   const chat = document.getElementById("chat");
 
-  const userMessage = input.value;
+  const msg = input.value;
+  if(!msg) return;
 
-  if (!userMessage) return;
-
-  chat.innerHTML += `<p><b>Ты:</b> ${userMessage}</p>`;
+  chat.innerHTML += `<div class="msg user">${msg}</div>`;
   input.value = "";
 
-  const aiMsgId = "ai-" + Date.now();
-  chat.innerHTML += `<p id="${aiMsgId}"><b>AI:</b> думает...</p>`;
+  const aiDiv = document.createElement("div");
+  aiDiv.className = "msg ai typing";
+  aiDiv.innerText = "думает";
+  chat.appendChild(aiDiv);
 
-  try {
-    const response = await fetch("https://ai-backend-4txk.onrender.com/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        message: userMessage
-      })
+  chat.scrollTop = chat.scrollHeight;
+
+  try{
+    const res = await fetch("https://ai-backend-4txk.onrender.com/chat",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({message:msg})
     });
 
-    const data = await response.json();
+    const data = await res.json();
+    let reply = data.choices?.[0]?.message?.content || "Ошибка";
 
-    console.log(data);
+    aiDiv.classList.remove("typing");
+    aiDiv.innerHTML = formatText(reply);
 
-    let aiReply = "Ошибка ответа";
-
-    if (data.choices && data.choices[0]) {
-      aiReply = data.choices[0].message.content;
-    } else if (data.error) {
-      aiReply = "Ошибка: " + data.error.message;
+    if(currentChat.length === 0){
+      addChat(msg.slice(0,20));
     }
 
-    document.getElementById(aiMsgId).innerHTML = `<b>AI:</b> ${aiReply}`;
+    currentChat.push({user:msg, ai:reply});
 
-  } catch (error) {
-    console.error(error);
-    document.getElementById(aiMsgId).innerHTML = `<b>AI:</b> Ошибка подключения`;
+  }catch{
+    aiDiv.innerText = "Ошибка подключения";
   }
+
+  chat.scrollTop = chat.scrollHeight;
 }
 </script>
 
