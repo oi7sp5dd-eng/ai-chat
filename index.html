@@ -4,27 +4,11 @@
 <title>Neuraxis</title>
 
 <style>
-:root{
-  --bg:#0f172a;
-  --panel:#020617;
-  --msg-ai:#1e293b;
-  --msg-user:#2563eb;
-  --text:white;
-}
-
-.light{
-  --bg:#ffffff;
-  --panel:#f1f5f9;
-  --msg-ai:#e2e8f0;
-  --msg-user:#2563eb;
-  --text:black;
-}
-
-body{
+body {
   margin:0;
   font-family:Arial;
-  background:var(--bg);
-  color:var(--text);
+  background:#0f172a;
+  color:white;
   display:flex;
   height:100vh;
 }
@@ -32,38 +16,54 @@ body{
 /* SIDEBAR */
 .sidebar{
   width:260px;
-  background:var(--panel);
+  background:#020617;
   position:fixed;
   height:100%;
   left:-260px;
   transition:.3s;
   padding:15px;
+  overflow-y:auto;
 }
-
 .sidebar.open{left:0;}
 
 .logo{font-size:20px;margin-bottom:10px;}
 
+.chat-item{
+  padding:10px;
+  background:#1e293b;
+  margin-bottom:5px;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+/* SETTINGS BUTTON */
 .settings{
-  position:absolute;
+  position:fixed;
   bottom:15px;
   left:15px;
+  font-size:20px;
   cursor:pointer;
 }
 
 /* MAIN */
-.main{flex:1;display:flex;flex-direction:column;width:100%;}
+.main{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  width:100%;
+}
 
-/* TOP */
+/* TOPBAR */
 .topbar{
   padding:10px;
 }
 
-.btn{
-  background:#1e293b;
+.menu-btn{
+  font-size:22px;
+  background:#2563eb;
   border:none;
   color:white;
-  padding:8px;
+  padding:8px 12px;
   border-radius:8px;
   cursor:pointer;
 }
@@ -83,8 +83,8 @@ body{
   white-space:pre-wrap;
 }
 
-.user{background:var(--msg-user);margin-left:auto;}
-.ai{background:var(--msg-ai);}
+.user{background:#2563eb;margin-left:auto;}
+.ai{background:#1e293b;}
 
 /* INPUT */
 .input-area{
@@ -92,7 +92,7 @@ body{
   bottom:0;
   display:flex;
   padding:15px;
-  background:var(--panel);
+  background:#020617;
 }
 
 input{
@@ -113,41 +113,38 @@ input{
   color:white;
 }
 
-/* SETTINGS MODAL */
-.modal{
-  position:fixed;
-  top:0;left:0;
-  width:100%;height:100%;
-  background:rgba(0,0,0,.5);
-  display:none;
-  align-items:center;
-  justify-content:center;
-}
-
-.modal-box{
-  background:var(--panel);
-  padding:20px;
-  border-radius:12px;
-  width:300px;
-}
-
-.option{
-  padding:10px;
+/* FILE */
+.file{
+  margin-left:10px;
   cursor:pointer;
-  border-radius:8px;
 }
 
-.option:hover{
-  background:#1e293b;
+/* CODE */
+pre{
+  background:black;
+  padding:10px;
+  border-radius:10px;
+  position:relative;
 }
 
-/* typing dot */
+.copy-btn{
+  position:absolute;
+  top:5px;
+  right:5px;
+  background:#2563eb;
+  border:none;
+  color:white;
+  padding:5px;
+  cursor:pointer;
+  border-radius:6px;
+}
+
+/* DOT */
 .dot{
   width:6px;height:6px;
-  border-radius:50%;
+  background:white;
   display:inline-block;
-  margin-left:5px;
-  background:var(--text);
+  border-radius:50%;
   animation:blink 1s infinite;
 }
 
@@ -163,13 +160,16 @@ input{
 
 <div class="sidebar" id="sidebar">
   <div class="logo">Neuraxis</div>
-  <div class="settings" onclick="openSettings()">⚙️</div>
+  <button onclick="newChat()">➕ Новый чат</button>
+  <div id="chats"></div>
 </div>
+
+<div class="settings" onclick="alert('Настройки позже добавим')">⚙️</div>
 
 <div class="main">
 
 <div class="topbar">
-  <button class="btn" onclick="toggleSidebar()">☰</button>
+  <button class="menu-btn" onclick="toggleSidebar()">☰</button>
 </div>
 
 <div id="chat" class="chat"></div>
@@ -177,68 +177,82 @@ input{
 <div class="input-area">
   <input id="message" placeholder="Напиши..." onkeydown="if(event.key==='Enter') sendMessage()">
   <button class="send" onclick="sendMessage()">➤</button>
+  <input type="file" id="file" class="file">
 </div>
 
-</div>
-
-<!-- SETTINGS -->
-<div class="modal" id="modal">
-  <div class="modal-box">
-    <h3>Настройки</h3>
-
-    <p>Тема:</p>
-
-    <div class="option" onclick="setTheme('default')">По умолчанию</div>
-    <div class="option" onclick="setTheme('light')">Светлая</div>
-    <div class="option" onclick="setTheme('dark')">Тёмная</div>
-
-    <br>
-    <button onclick="closeSettings()">Закрыть</button>
-  </div>
 </div>
 
 <script>
+let chats = JSON.parse(localStorage.getItem("chats")) || [];
+let currentIndex = 0;
+
+function save(){
+  localStorage.setItem("chats", JSON.stringify(chats));
+}
+
 function toggleSidebar(){
   document.getElementById("sidebar").classList.toggle("open");
 }
 
-function openSettings(){
-  document.getElementById("modal").style.display="flex";
+function newChat(){
+  chats.push({title:"Новый чат", messages:[]});
+  currentIndex = chats.length-1;
+  renderChats();
+  renderMessages();
+  save();
 }
 
-function closeSettings(){
-  document.getElementById("modal").style.display="none";
+function renderChats(){
+  const el=document.getElementById("chats");
+  el.innerHTML="";
+  chats.forEach((c,i)=>{
+    el.innerHTML+=`<div class="chat-item" onclick="openChat(${i})">${c.title}</div>`;
+  });
 }
 
-function setTheme(theme){
-  if(theme==="light"){
-    document.body.classList.add("light");
-    localStorage.setItem("theme","light");
-  }else{
-    document.body.classList.remove("light");
-    localStorage.setItem("theme","dark");
-  }
+function openChat(i){
+  currentIndex=i;
+  renderMessages();
 }
 
-window.onload=()=>{
-  if(localStorage.getItem("theme")==="light"){
-    document.body.classList.add("light");
-  }
+function renderMessages(){
+  const chat=document.getElementById("chat");
+  chat.innerHTML="";
+  chats[currentIndex].messages.forEach(m=>{
+    chat.innerHTML+=`<div class="msg ${m.role}">${formatText(m.text)}</div>`;
+  });
+}
+
+function formatText(text){
+  return text.replace(/```(.*?)```/gs,(m,code)=>{
+    return `<pre><button class="copy-btn" onclick="copyCode(this)">📋</button>${code}</pre>`;
+  });
+}
+
+function copyCode(btn){
+  const text=btn.parentElement.innerText.replace("📋","");
+  navigator.clipboard.writeText(text);
+  btn.innerText="✔";
+  setTimeout(()=>btn.innerText="📋",1000);
 }
 
 async function sendMessage(){
   const input=document.getElementById("message");
-  const chat=document.getElementById("chat");
-
   const msg=input.value;
   if(!msg)return;
 
-  chat.innerHTML+=`<div class="msg user">${msg}</div>`;
+  if(!chats[currentIndex]) newChat();
+
+  chats[currentIndex].messages.push({role:"user", text:msg});
+
+  renderMessages();
   input.value="";
+
+  const chat=document.getElementById("chat");
 
   const aiDiv=document.createElement("div");
   aiDiv.className="msg ai";
-  aiDiv.innerHTML=`<span class="dot"></span>`;
+  aiDiv.innerHTML="<span class='dot'></span>";
   chat.appendChild(aiDiv);
 
   chat.scrollTop=chat.scrollHeight;
@@ -247,18 +261,30 @@ async function sendMessage(){
     const res=await fetch("https://ai-backend-4txk.onrender.com/chat",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({message:msg})
+      body:JSON.stringify({
+        message:msg
+      })
     });
 
     const data=await res.json();
     const reply=data.choices?.[0]?.message?.content || "Ошибка";
 
-    aiDiv.innerHTML=reply;
+    chats[currentIndex].messages.push({role:"ai", text:reply});
+
+    if(chats[currentIndex].title==="Новый чат"){
+      chats[currentIndex].title=msg.slice(0,20);
+    }
+
+    save();
+    renderChats();
+    renderMessages();
 
   }catch{
     aiDiv.innerText="Ошибка";
   }
 }
+
+renderChats();
 </script>
 
 </body>
