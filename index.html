@@ -4,7 +4,7 @@
 <title>Neuraxis</title>
 
 <style>
-body {
+body{
   margin:0;
   font-family:Arial;
   background:#0f172a;
@@ -22,7 +22,7 @@ body {
   left:-260px;
   transition:.3s;
   padding:15px;
-  overflow-y:auto;
+  z-index:5;
 }
 .sidebar.open{left:0;}
 
@@ -36,13 +36,15 @@ body {
   cursor:pointer;
 }
 
-/* SETTINGS BUTTON */
+/* SETTINGS */
 .settings{
   position:fixed;
   bottom:15px;
   left:15px;
-  font-size:20px;
+  font-size:24px;
+  color:white;
   cursor:pointer;
+  z-index:10;
 }
 
 /* MAIN */
@@ -50,7 +52,6 @@ body {
   flex:1;
   display:flex;
   flex-direction:column;
-  width:100%;
 }
 
 /* TOPBAR */
@@ -58,21 +59,26 @@ body {
   padding:10px;
 }
 
+/* КНОПКА ВСЕГДА ВИДНА */
 .menu-btn{
   font-size:22px;
   background:#2563eb;
-  border:none;
   color:white;
-  padding:8px 12px;
-  border-radius:8px;
+  border:none;
+  padding:10px 14px;
+  border-radius:10px;
   cursor:pointer;
+  position:fixed;
+  top:10px;
+  left:10px;
+  z-index:20;
 }
 
 /* CHAT */
 .chat{
   flex:1;
   overflow-y:auto;
-  padding:20px 120px;
+  padding:60px 120px 20px 120px;
 }
 
 .msg{
@@ -91,14 +97,14 @@ body {
   position:sticky;
   bottom:0;
   display:flex;
-  padding:15px;
+  padding:10px;
   background:#020617;
 }
 
 input{
   flex:1;
-  padding:14px;
-  border-radius:12px;
+  padding:12px;
+  border-radius:10px;
   border:none;
   background:#1e293b;
   color:white;
@@ -106,17 +112,11 @@ input{
 
 .send{
   margin-left:10px;
-  padding:0 18px;
+  padding:0 15px;
   border:none;
-  border-radius:12px;
+  border-radius:10px;
   background:#2563eb;
   color:white;
-}
-
-/* FILE */
-.file{
-  margin-left:10px;
-  cursor:pointer;
 }
 
 /* CODE */
@@ -136,7 +136,6 @@ pre{
   color:white;
   padding:5px;
   cursor:pointer;
-  border-radius:6px;
 }
 
 /* DOT */
@@ -153,6 +152,30 @@ pre{
   50%{opacity:1}
   100%{opacity:0}
 }
+
+/* MODAL */
+.modal{
+  position:fixed;
+  top:0;left:0;
+  width:100%;height:100%;
+  background:rgba(0,0,0,.5);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:30;
+}
+
+.box{
+  background:#020617;
+  padding:20px;
+  border-radius:10px;
+  width:300px;
+}
+
+.option{
+  padding:8px;
+  cursor:pointer;
+}
 </style>
 </head>
 
@@ -164,22 +187,43 @@ pre{
   <div id="chats"></div>
 </div>
 
-<div class="settings" onclick="alert('Настройки позже добавим')">⚙️</div>
+<!-- ⚙️ ВИДИМАЯ ШЕСТЕРЁНКА -->
+<div class="settings" onclick="openSettings()">⚙️</div>
+
+<!-- ☰ ВСЕГДА ВИДНА -->
+<button class="menu-btn" onclick="toggleSidebar()">☰</button>
 
 <div class="main">
-
-<div class="topbar">
-  <button class="menu-btn" onclick="toggleSidebar()">☰</button>
-</div>
 
 <div id="chat" class="chat"></div>
 
 <div class="input-area">
   <input id="message" placeholder="Напиши..." onkeydown="if(event.key==='Enter') sendMessage()">
   <button class="send" onclick="sendMessage()">➤</button>
-  <input type="file" id="file" class="file">
 </div>
 
+</div>
+
+<!-- SETTINGS -->
+<div class="modal" id="modal">
+  <div class="box">
+
+    <h3>Настройки</h3>
+
+    <p>Тема:</p>
+    <div class="option">По умолчанию</div>
+    <div class="option">Светлая</div>
+    <div class="option">Тёмная</div>
+
+    <p>Язык:</p>
+    <div class="option">Русский</div>
+    <div class="option">Українська</div>
+    <div class="option">English</div>
+
+    <br>
+    <button onclick="closeSettings()">Закрыть</button>
+
+  </div>
 </div>
 
 <script>
@@ -194,9 +238,17 @@ function toggleSidebar(){
   document.getElementById("sidebar").classList.toggle("open");
 }
 
+function openSettings(){
+  document.getElementById("modal").style.display="flex";
+}
+
+function closeSettings(){
+  document.getElementById("modal").style.display="none";
+}
+
 function newChat(){
-  chats.push({title:"Новый чат", messages:[]});
-  currentIndex = chats.length-1;
+  chats.push({title:"Новый чат",messages:[]});
+  currentIndex=chats.length-1;
   renderChats();
   renderMessages();
   save();
@@ -218,7 +270,7 @@ function openChat(i){
 function renderMessages(){
   const chat=document.getElementById("chat");
   chat.innerHTML="";
-  chats[currentIndex].messages.forEach(m=>{
+  chats[currentIndex]?.messages.forEach(m=>{
     chat.innerHTML+=`<div class="msg ${m.role}">${formatText(m.text)}</div>`;
   });
 }
@@ -232,8 +284,6 @@ function formatText(text){
 function copyCode(btn){
   const text=btn.parentElement.innerText.replace("📋","");
   navigator.clipboard.writeText(text);
-  btn.innerText="✔";
-  setTimeout(()=>btn.innerText="📋",1000);
 }
 
 async function sendMessage(){
@@ -243,33 +293,27 @@ async function sendMessage(){
 
   if(!chats[currentIndex]) newChat();
 
-  chats[currentIndex].messages.push({role:"user", text:msg});
-
+  chats[currentIndex].messages.push({role:"user",text:msg});
   renderMessages();
   input.value="";
 
   const chat=document.getElementById("chat");
-
   const aiDiv=document.createElement("div");
   aiDiv.className="msg ai";
   aiDiv.innerHTML="<span class='dot'></span>";
   chat.appendChild(aiDiv);
 
-  chat.scrollTop=chat.scrollHeight;
-
   try{
     const res=await fetch("https://ai-backend-4txk.onrender.com/chat",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        message:msg
-      })
+      body:JSON.stringify({message:msg})
     });
 
     const data=await res.json();
     const reply=data.choices?.[0]?.message?.content || "Ошибка";
 
-    chats[currentIndex].messages.push({role:"ai", text:reply});
+    chats[currentIndex].messages.push({role:"ai",text:reply});
 
     if(chats[currentIndex].title==="Новый чат"){
       chats[currentIndex].title=msg.slice(0,20);
