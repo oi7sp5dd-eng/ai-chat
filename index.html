@@ -47,20 +47,11 @@ body{
   z-index:10;
 }
 
-/* MAIN */
-.main{
-  flex:1;
-  display:flex;
-  flex-direction:column;
-}
-
-/* TOPBAR */
-.topbar{
-  padding:10px;
-}
-
-/* КНОПКА ВСЕГДА ВИДНА */
+/* MENU BUTTON */
 .menu-btn{
+  position:fixed;
+  top:10px;
+  left:10px;
   font-size:22px;
   background:#2563eb;
   color:white;
@@ -68,10 +59,14 @@ body{
   padding:10px 14px;
   border-radius:10px;
   cursor:pointer;
-  position:fixed;
-  top:10px;
-  left:10px;
   z-index:20;
+}
+
+/* MAIN */
+.main{
+  flex:1;
+  display:flex;
+  flex-direction:column;
 }
 
 /* CHAT */
@@ -171,11 +166,6 @@ pre{
   border-radius:10px;
   width:300px;
 }
-
-.option{
-  padding:8px;
-  cursor:pointer;
-}
 </style>
 </head>
 
@@ -187,10 +177,7 @@ pre{
   <div id="chats"></div>
 </div>
 
-<!-- ⚙️ ВИДИМАЯ ШЕСТЕРЁНКА -->
 <div class="settings" onclick="openSettings()">⚙️</div>
-
-<!-- ☰ ВСЕГДА ВИДНА -->
 <button class="menu-btn" onclick="toggleSidebar()">☰</button>
 
 <div class="main">
@@ -207,22 +194,9 @@ pre{
 <!-- SETTINGS -->
 <div class="modal" id="modal">
   <div class="box">
-
     <h3>Настройки</h3>
-
-    <p>Тема:</p>
-    <div class="option">По умолчанию</div>
-    <div class="option">Светлая</div>
-    <div class="option">Тёмная</div>
-
-    <p>Язык:</p>
-    <div class="option">Русский</div>
-    <div class="option">Українська</div>
-    <div class="option">English</div>
-
-    <br>
+    <p>Тема и язык позже</p>
     <button onclick="closeSettings()">Закрыть</button>
-
   </div>
 </div>
 
@@ -271,19 +245,8 @@ function renderMessages(){
   const chat=document.getElementById("chat");
   chat.innerHTML="";
   chats[currentIndex]?.messages.forEach(m=>{
-    chat.innerHTML+=`<div class="msg ${m.role}">${formatText(m.text)}</div>`;
+    chat.innerHTML+=`<div class="msg ${m.role}">${m.text}</div>`;
   });
-}
-
-function formatText(text){
-  return text.replace(/```(.*?)```/gs,(m,code)=>{
-    return `<pre><button class="copy-btn" onclick="copyCode(this)">📋</button>${code}</pre>`;
-  });
-}
-
-function copyCode(btn){
-  const text=btn.parentElement.innerText.replace("📋","");
-  navigator.clipboard.writeText(text);
 }
 
 async function sendMessage(){
@@ -304,10 +267,18 @@ async function sendMessage(){
   chat.appendChild(aiDiv);
 
   try{
+    const history = chats[currentIndex].messages.map(m => ({
+      role: m.role === "user" ? "user" : "assistant",
+      content: m.text
+    }));
+
     const res=await fetch("https://ai-backend-4txk.onrender.com/chat",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({message:msg})
+      body:JSON.stringify({
+        message: msg,
+        history: history
+      })
     });
 
     const data=await res.json();
